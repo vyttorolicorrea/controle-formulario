@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle Formulário</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .container { background: #fff; border-radius: 12px; border: 1px solid #e0e0e0; padding: 2rem 1.5rem; max-width: 360px; width: 100%; }
+  .status-card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; text-align: center; }
+  .status-dot { width: 13px; height: 13px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
+  .status-label { font-size: 15px; font-weight: 500; vertical-align: middle; color: #111; }
+  .status-sub { font-size: 13px; color: #777; margin-top: 6px; }
+  .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn { padding: 14px; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.15s, transform 0.1s; background: #fff; }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-open { border: 1px solid #0F6E56; color: #0F6E56; }
+  .btn-open:hover:not(:disabled) { background: #E1F5EE; }
+  .btn-close { border: 1px solid #993C1D; color: #993C1D; }
+  .btn-close:hover:not(:disabled) { background: #FAECE7; }
+  .log { font-size: 12px; color: #888; margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1rem; }
+  .log-entry { padding: 3px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="status-card">
+    <div>
+      <span class="status-dot" id="dot" style="background:#aaa;"></span>
+      <span class="status-label" id="status-text">Verificando...</span>
+    </div>
+    <div class="status-sub" id="status-sub">aguardando consulta</div>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-open" id="btn-open" onclick="toggle('open')" disabled>
+      <i class="ti ti-forms"></i> Abrir
+    </button>
+    <button class="btn btn-close" id="btn-close" onclick="toggle('close')" disabled>
+      <i class="ti ti-hand-stop"></i> Fechar
+    </button>
+  </div>
+  <div class="log" id="log"></div>
+</div>
+<script>
+  const BASE = 'https://script.google.com/macros/s/AKfycbzenJL6OHugqApumRgCNwuf3P6H-GmZvWtGpeJYc-JZcCWN55rhkZGbKtYlZYLOP5Pc/exec';
+
+  function fmt(d) {
+    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function addLog(msg) {
+    const log = document.getElementById('log');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.textContent = fmt(new Date()) + ' — ' + msg;
+    log.prepend(entry);
+    if (log.children.length > 5) log.removeChild(log.lastChild);
+  }
+
+  function setStatus(accepting) {
+    const dot = document.getElementById('dot');
+    const text = document.getElementById('status-text');
+    const sub = document.getElementById('status-sub');
+    document.getElementById('btn-open').disabled = accepting;
+    document.getElementById('btn-close').disabled = !accepting;
+    if (accepting) {
+      dot.style.background = '#1D9E75';
+      text.textContent = 'Formulário aberto';
+      sub.textContent = 'Técnicos podem enviar solicitações';
+    } else {
+      dot.style.background = '#D85A30';
+      text.textContent = 'Formulário fechado';
+      sub.textContent = 'Novas respostas bloqueadas';
+    }
+  }
+
+  function setLoading() {
+    document.getElementById('btn-open').disabled = true;
+    document.getElementById('btn-close').disabled = true;
+    document.getElementById('status-text').textContent = 'Aguardando...';
+    document.getElementById('dot').style.background = '#aaa';
+  }
+
+  async function toggle(action) {
+    setLoading();
+    try {
+      const res = await fetch(BASE + '?action=' + action);
+      const data = await res.json();
+      setStatus(data.accepting);
+      addLog(action === 'open' ? 'Formulário aberto' : 'Formulário fechado');
+    } catch (e) {
+      document.getElementById('status-text').textContent = 'Erro de conexão';
+      document.getElementById('dot').style.background = '#E24B4A';
+      document.getElementById('btn-open').disabled = false;
+      document.getElementById('btn-close').disabled = false;
+      addLog('Erro ao comunicar com o servidor');
+    }
+  }
+
+  async function checkStatus() {
+    try {
+      const res = await fetch(BASE);
+      const data = await res.json();
+      setStatus(data.accepting);
+      addLog('Status verificado');
+    } catch (e) {
+      document.getElementById('status-text').textContent = 'Sem conexão';
+      document.getElementById('dot').style.background = '#E24B4A';
+      document.getElementById('status-sub').textContent = 'Não foi possível verificar';
+      document.getElementById('btn-open').disabled = false;
+      document.getElementById('btn-close').disabled = false;
+    }
+  }
+
+  checkStatus();
+</script>
+</body>
+</html>
